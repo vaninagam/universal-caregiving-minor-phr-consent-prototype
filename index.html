@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1280" />
+<title>Minor PHR Consent · Prototype</title>
+<style>
+  :root {
+    --red: #CC0000; --red-dark: #A30000; --red-light: #FFF5F5; --red-mid: #FFE0E0;
+    --teal: #007A8A; --teal-dark: #005F6B; --teal-light: #E5F4F6; --teal-mid: #99CDD4;
+    --text: #1A1A1A; --text-mid: #555; --text-light: #888;
+    --border: #E8E8E8; --bg: #F5F6F8; --white: #FFFFFF;
+    --green: #00875A; --green-light: #E6F7F0; --green-mid: #B3E6D0;
+    --blue: #0050CC; --blue-light: #EEF3FF; --blue-mid: #C0D0F0;
+    --yellow: #FFF9EE; --yellow-mid: #F5DFA0; --yellow-dark: #B07800;
+    --purple: #6B3FA0; --purple-light: #F3EEF8; --purple-mid: #D4C0EC;
+    --orange: #E05C00; --orange-light: #FFF3EB; --orange-mid: #FFCCA0;
+    --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px;
+    --shadow-sm: 0 1px 4px rgba(0,0,0,0.06); --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* Toolbar */
+  .proto-bar { background: #0F1629; padding: 0 24px; height: 44px; display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 999; }
+  .proto-label { font-size: 12px; font-weight: 600; color: #88AABB; letter-spacing: 0.3px; flex-shrink: 0; }
+  .proto-steps { display: flex; gap: 6px; margin-left: 8px; flex: 1; overflow-x: auto; }
+  .proto-step { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap; color: #778; border: 1px solid #334; transition: all 0.15s; }
+  .proto-step:hover { color: #AAB; border-color: #556; }
+  .proto-step.active { background: var(--teal); color: white; border-color: var(--teal); }
+  .proto-step.alt { border-color: #7A5C00; color: #C8A830; }
+  .proto-step.alt.active { background: #7A5C00; border-color: #7A5C00; color: white; }
+  .proto-divider { width: 1px; height: 20px; background: #334; margin: 0 4px; flex-shrink: 0; }
+  .proto-note { font-size: 11px; color: #445; margin-left: auto; flex-shrink: 0; }
+
+  /* Screen */
+  .screen { display: none; flex-direction: column; min-height: calc(100vh - 44px); }
+  .screen.active { display: flex; }
+
+  /* CVS Nav */
+  .cvs-nav { background: var(--red); height: 56px; display: flex; align-items: center; padding: 0 32px; gap: 24px; flex-shrink: 0; }
+  .cvs-logo { display: flex; align-items: center; gap: 8px; }
+  .cvs-logo-heart { font-size: 22px; }
+  .cvs-logo-text { color: white; font-size: 20px; font-weight: 800; letter-spacing: 1px; }
+  .cvs-logo-tagline { color: rgba(255,255,255,0.75); font-size: 11px; border-left: 1px solid rgba(255,255,255,0.3); padding-left: 10px; }
+  .cvs-nav-links { display: flex; gap: 2px; margin-left: 16px; }
+  .cvs-nav-link { color: rgba(255,255,255,0.8); font-size: 13px; padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer; }
+  .cvs-nav-link.active { background: rgba(255,255,255,0.2); color: white; font-weight: 600; }
+  .cvs-nav-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .cvs-nav-user { display: flex; align-items: center; gap: 8px; color: white; font-size: 13px; cursor: pointer; }
+  .cvs-nav-avatar { width: 32px; height: 32px; border-radius: 16px; background: rgba(255,255,255,0.25); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; }
+
+  /* Sub-nav */
+  .sub-nav { background: white; border-bottom: 1px solid var(--border); padding: 0 32px; height: 44px; display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-light); flex-shrink: 0; }
+  .sub-nav a { color: var(--teal); cursor: pointer; } .sub-nav a:hover { text-decoration: underline; }
+  .sub-nav span { color: var(--text-mid); font-weight: 500; } .sub-nav-sep { color: #CCC; }
+
+  /* Page */
+  .page-wrap { max-width: 1100px; margin: 0 auto; padding: 36px 32px 64px; flex: 1; }
+  .page-wrap.narrow { max-width: 720px; } .page-wrap.mid { max-width: 880px; }
+  .page-hd { margin-bottom: 28px; }
+  .page-title { font-size: 26px; font-weight: 700; color: var(--text); letter-spacing: -0.4px; }
+  .page-subtitle { font-size: 15px; color: var(--text-mid); margin-top: 6px; line-height: 1.5; }
+
+  /* Cards */
+  .card { background: white; border-radius: var(--radius-lg); border: 1px solid var(--border); box-shadow: var(--shadow-sm); overflow: hidden; }
+  .card-hd { padding: 18px 22px; border-bottom: 1px solid var(--border); }
+  .card-hd-title { font-size: 16px; font-weight: 700; color: var(--text); }
+  .card-hd-sub { font-size: 13px; color: var(--text-light); margin-top: 3px; }
+  .card-body { padding: 22px; }
+  .card-ft { padding: 14px 22px; border-top: 1px solid var(--border); background: #FAFAFA; display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 10px 20px; border-radius: var(--radius-md); font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap; }
+  .btn-primary { background: var(--teal); color: white; } .btn-primary:hover { background: var(--teal-dark); }
+  .btn-red { background: var(--red); color: white; } .btn-red:hover { background: var(--red-dark); }
+  .btn-secondary { background: white; color: var(--text); border: 1.5px solid var(--border); } .btn-secondary:hover { border-color: #BBB; }
+  .btn-ghost { background: transparent; color: var(--text-mid); } .btn-ghost:hover { color: var(--text); background: var(--bg); }
+  .btn-green { background: var(--green); color: white; }
+  .btn-lg { padding: 14px 28px; font-size: 15px; } .btn-sm { padding: 7px 14px; font-size: 13px; }
+
+  /* Alerts */
+  .alert { display: flex; gap: 10px; padding: 13px 16px; border-radius: var(--radius-md); margin-bottom: 18px; font-size: 14px; line-height: 1.6; }
+  .alert-icon { flex-shrink: 0; font-size: 16px; margin-top: 1px; }
+  .alert-info { background: var(--teal-light); border: 1px solid var(--teal-mid); color: var(--teal-dark); }
+  .alert-warning { background: var(--yellow); border: 1px solid var(--yellow-mid); color: var(--yellow-dark); }
+  .alert-success { background: var(--green-light); border: 1px solid var(--green-mid); color: var(--green); }
+  .alert-purple { background: var(--purple-light); border: 1px solid var(--purple-mid); color: var(--purple); }
+
+  /* Badges */
+  .badge { display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+  .badge-green { background: var(--green-light); color: var(--green); }
+  .badge-blue { background: var(--blue-light); color: var(--blue); }
+  .badge-yellow { background: var(--yellow); color: var(--yellow-dark); border: 1px solid var(--yellow-mid); }
+  .badge-teal { background: var(--teal-light); color: var(--teal); }
+  .badge-purple { background: var(--purple-light); color: var(--purple); }
+  .badge-gray { background: var(--bg); color: var(--text-light); border: 1px solid var(--border); }
+
+  /* Layout */
+  .two-col { display: grid; grid-template-columns: 1fr 300px; gap: 24px; align-items: start; }
+  .three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .two-col-equal { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .sticky-panel { position: sticky; top: 60px; }
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+  .section-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-light); margin-bottom: 10px; }
+
+  /* Member cards */
+  .member-card { display: flex; align-items: flex-start; gap: 14px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: white; margin-bottom: 10px; box-shadow: var(--shadow-sm); }
+  .member-avatar { width: 44px; height: 44px; border-radius: 22px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: white; flex-shrink: 0; }
+  .av-teal { background: linear-gradient(135deg, var(--teal), #00AACC); }
+  .av-green { background: linear-gradient(135deg, var(--green), #00CC66); }
+  .av-blue { background: linear-gradient(135deg, #2A5FA0, #4488FF); }
+  .av-purple { background: linear-gradient(135deg, var(--purple), #AA66FF); }
+  .av-orange { background: linear-gradient(135deg, var(--orange), #FF9933); }
+  .member-info { flex: 1; min-width: 0; }
+  .member-name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .member-meta { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+
+  /* Permission grid */
+  .perm-grid { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .perm-item { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 8px; }
+  .perm-granted { background: var(--green-light); color: var(--green); }
+  .perm-pending { background: var(--yellow); color: var(--yellow-dark); border: 1px solid var(--yellow-mid); }
+  .perm-none { background: var(--bg); color: var(--text-light); border: 1px solid var(--border); }
+  .perm-future { background: var(--purple-light); color: var(--purple); }
+
+  /* Add path tiles */
+  .path-tile { background: white; border: 2px solid var(--border); border-radius: var(--radius-lg); padding: 28px 24px; cursor: pointer; transition: all 0.15s; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .path-tile:hover { border-color: var(--teal); box-shadow: var(--shadow-md); }
+  .path-tile-icon { font-size: 40px; }
+  .path-tile-title { font-size: 18px; font-weight: 700; color: var(--text); }
+  .path-tile-desc { font-size: 13px; color: var(--text-mid); line-height: 1.6; }
+  .path-tile-tags { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+
+  /* Discovery sources */
+  .discovery-source { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: white; margin-bottom: 8px; }
+  .discovery-source-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .discovery-source-info { flex: 1; }
+  .discovery-source-title { font-size: 14px; font-weight: 500; color: var(--text); }
+  .discovery-source-status { font-size: 12px; color: var(--text-light); margin-top: 1px; }
+  .discovery-source.found { border-color: var(--green-mid); background: var(--green-light); }
+  .discovery-source.searching { border-color: var(--yellow-mid); background: var(--yellow); }
+  .discovery-source.not-linked { border-color: var(--border); background: var(--bg); }
+
+  /* Trust levels */
+  .trust-track { display: flex; align-items: center; gap: 0; margin: 24px 0; }
+  .trust-tier { flex: 1; padding: 20px 16px; border: 2px solid var(--border); background: white; text-align: center; position: relative; }
+  .trust-tier:first-child { border-radius: var(--radius-md) 0 0 var(--radius-md); }
+  .trust-tier:last-child { border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+  .trust-tier.current { border-color: var(--blue); background: var(--blue-light); z-index: 1; }
+  .trust-tier.required { border-color: var(--teal); background: var(--teal-light); z-index: 1; }
+  .trust-tier.locked { background: var(--bg); opacity: 0.6; }
+  .trust-tier-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-light); margin-bottom: 6px; }
+  .trust-tier-name { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .trust-tier-desc { font-size: 12px; color: var(--text-mid); line-height: 1.5; }
+  .trust-tier-badge { display: inline-block; margin-top: 8px; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+  .trust-connector { width: 32px; height: 2px; background: var(--border); flex-shrink: 0; }
+
+  /* Service authorization tiles */
+  .service-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+  .service-tile { border: 1.5px solid var(--border); border-radius: var(--radius-lg); padding: 18px; cursor: pointer; transition: all 0.15s; background: white; }
+  .service-tile.enabled { border-color: var(--teal); background: var(--teal-light); }
+  .service-tile.pending { border-color: var(--yellow-mid); background: var(--yellow); }
+  .service-tile.future { border-color: var(--purple-mid); background: var(--purple-light); cursor: default; opacity: 0.8; }
+  .service-tile-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .service-tile-icon { font-size: 22px; }
+  .service-tile-name { font-size: 14px; font-weight: 700; color: var(--text); flex: 1; }
+  .service-tile-toggle { width: 36px; height: 20px; border-radius: 10px; background: var(--border); position: relative; flex-shrink: 0; }
+  .service-tile-toggle.on { background: var(--teal); }
+  .service-tile-toggle::after { content: ''; position: absolute; width: 16px; height: 16px; border-radius: 8px; background: white; top: 2px; left: 2px; transition: left 0.15s; }
+  .service-tile-toggle.on::after { left: 18px; }
+  .service-tile-desc { font-size: 12px; color: var(--text-mid); line-height: 1.5; }
+
+  /* Platform diagram */
+  .platform-diagram { display: grid; grid-template-columns: 1fr 200px 1fr; gap: 0; align-items: center; padding: 32px 0; }
+  .platform-inputs { display: flex; flex-direction: column; gap: 10px; }
+  .platform-outputs { display: flex; flex-direction: column; gap: 10px; }
+  .platform-hub { background: linear-gradient(135deg, var(--teal), var(--teal-dark)); border-radius: var(--radius-lg); padding: 28px 20px; text-align: center; color: white; box-shadow: 0 8px 32px rgba(0,122,138,0.3); }
+  .platform-hub-title { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+  .platform-hub-sub { font-size: 11px; opacity: 0.8; }
+  .platform-node { background: white; border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .platform-node-icon { font-size: 18px; flex-shrink: 0; }
+  .platform-node-text { flex: 1; }
+  .platform-node-title { font-weight: 600; color: var(--text); font-size: 13px; }
+  .platform-node-sub { font-size: 11px; color: var(--text-light); margin-top: 1px; }
+  .platform-node.future { border-color: var(--purple-mid); background: var(--purple-light); }
+  .platform-arrows { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 0 12px; }
+  .platform-arrow { font-size: 22px; color: var(--teal-mid); }
+  .platform-ownership { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px; }
+  .ownership-box { border: 1.5px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
+  .ownership-box-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .ownership-item { font-size: 12px; color: var(--text-mid); padding: 4px 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
+  .ownership-item:last-child { border-bottom: none; }
+
+  /* Success */
+  .success-hero { text-align: center; padding: 36px 24px 28px; }
+  .success-circle { width: 88px; height: 88px; border-radius: 44px; background: linear-gradient(135deg, var(--teal), #00AACC); display: flex; align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 18px; box-shadow: 0 8px 24px rgba(0,122,138,0.25); }
+  .success-title { font-size: 26px; font-weight: 700; color: var(--text); letter-spacing: -0.4px; margin-bottom: 10px; }
+  .success-sub { font-size: 15px; color: var(--text-mid); line-height: 1.7; max-width: 440px; margin: 0 auto; }
+
+  /* Scenario journey */
+  .scenario-header { background: linear-gradient(135deg, #0F1629, #1A2845); border-radius: var(--radius-lg); padding: 28px 32px; color: white; margin-bottom: 24px; }
+  .scenario-tag { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: rgba(255,255,255,0.5); margin-bottom: 8px; }
+  .scenario-title { font-size: 22px; font-weight: 700; color: white; margin-bottom: 8px; }
+  .scenario-desc { font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.6; }
+  .scenario-personas { display: flex; gap: 12px; margin-top: 16px; }
+  .scenario-persona { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border-radius: var(--radius-md); padding: 8px 12px; font-size: 12px; color: rgba(255,255,255,0.85); }
+  .journey-steps { display: flex; align-items: flex-start; gap: 0; margin-bottom: 24px; }
+  .journey-step { flex: 1; padding: 18px 16px; background: white; border: 1px solid var(--border); border-right: none; position: relative; }
+  .journey-step:first-child { border-radius: var(--radius-md) 0 0 var(--radius-md); }
+  .journey-step:last-child { border-right: 1px solid var(--border); border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+  .journey-step-num { font-size: 11px; font-weight: 700; color: var(--teal); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .journey-step-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .journey-step-desc { font-size: 12px; color: var(--text-light); line-height: 1.5; }
+  .journey-step-icon { font-size: 22px; margin-bottom: 8px; }
+  .journey-arrow { width: 20px; display: flex; align-items: center; justify-content: center; color: var(--teal-mid); font-size: 16px; flex-shrink: 0; align-self: center; z-index: 1; }
+  .scenario-outcome { border: 2px solid var(--teal); border-radius: var(--radius-lg); padding: 20px; background: var(--teal-light); display: flex; gap: 14px; align-items: flex-start; }
+  .scenario-key-decisions { margin-top: 16px; }
+  .decision-item { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .decision-item:last-child { border-bottom: none; }
+
+  /* Help card */
+  .help-card { background: var(--teal-light); border: 1px solid var(--teal-mid); border-radius: var(--radius-lg); padding: 20px; }
+  .help-card-icon { font-size: 28px; margin-bottom: 10px; }
+  .help-card-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  .help-card-text { font-size: 13px; color: var(--text-mid); line-height: 1.6; }
+  .help-list { list-style: none; margin-top: 10px; }
+  .help-list li { font-size: 13px; color: var(--text-mid); padding: 4px 0; display: flex; align-items: flex-start; gap: 7px; }
+  .help-list li::before { content: '✓'; color: var(--teal); font-weight: 700; font-size: 12px; flex-shrink: 0; margin-top: 2px; }
+
+  /* Timeline */
+  .timeline-item { display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .timeline-item:last-child { border-bottom: none; }
+  .timeline-dot { width: 28px; height: 28px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+  .dot-teal { background: var(--teal-light); color: var(--teal); }
+  .dot-green { background: var(--green-light); color: var(--green); }
+  .dot-yellow { background: var(--yellow); color: var(--yellow-dark); }
+  .dot-active { background: var(--teal); color: white; }
+  .timeline-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .timeline-desc { font-size: 13px; color: var(--text-light); margin-top: 2px; line-height: 1.5; }
+
+  /* Misc */
+  .text-link { color: var(--teal); cursor: pointer; font-size: 13px; text-decoration: underline; }
+  .form-group { margin-bottom: 18px; }
+  .form-label { display: block; font-size: 13px; font-weight: 600; color: var(--text-mid); margin-bottom: 6px; }
+  .form-input { width: 100%; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-md); font-size: 15px; color: var(--text); background: white; outline: none; }
+  .form-input.filled { border-color: var(--border); }
+  .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 12px; }
+  .select-input { width: 100%; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-md); font-size: 15px; color: var(--text); background: white; appearance: none; }
+</style>
+</head>
+<body>
+
+<!-- Prototype Toolbar -->
+<div class="proto-bar">
+  <span class="proto-label">PROTOTYPE</span>
+  <div class="proto-steps">
+    <div class="proto-step active" onclick="go(1)">1 · Family Hub</div>
+    <div class="proto-step" onclick="go(2)">2 · Add Caregivee</div>
+    <div class="proto-step" onclick="go(3)">3 · Discovery</div>
+    <div class="proto-step" onclick="go(4)">4 · Trust &amp; Identity</div>
+    <div class="proto-step" onclick="go(5)">5 · Consent</div>
+    <div class="proto-step" onclick="go(6)">6 · Relationship Established</div>
+    <div class="proto-step" onclick="go(7)">7 · Platform View</div>
+    <div class="proto-divider"></div>
+    <div class="proto-step alt" onclick="go(8)">A · Add Minor Child</div>
+    <div class="proto-step alt" onclick="go(9)">B · Add Spouse</div>
+    <div class="proto-step alt" onclick="go(10)">C · No CVS → Caregiver</div>
+    <div class="proto-step alt" onclick="go(11)">D · No CVS → Add Minor</div>
+    <div class="proto-step alt" onclick="go(12)">E · Minor Turns 18</div>
+    <div class="proto-step alt" onclick="go(13)">F · External Provider</div>
+  </div>
+  <span class="proto-note">TLACCAKRAK-1156 · Universal Caregiving</span>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 1 · Family Management Hub
+══════════════════════════════════════════════ -->
+<div class="screen active" id="s1">
+  <div class="cvs-nav">
+    <div class="cvs-logo"><span class="cvs-logo-heart">❤️</span><span class="cvs-logo-text">CVS</span><span class="cvs-logo-tagline">Health100™</span></div>
+    <div class="cvs-nav-links">
+      <div class="cvs-nav-link">Pharmacy</div>
+      <div class="cvs-nav-link">Health Records</div>
+      <div class="cvs-nav-link active">Caregiving</div>
+      <div class="cvs-nav-link">Benefits</div>
+      <div class="cvs-nav-link">Account</div>
+    </div>
+    <div class="cvs-nav-right"><div class="cvs-nav-user"><div class="cvs-nav-avatar">VN</div><span>Hi, Vani</span></div></div>
+  </div>
+  <div class="sub-nav"><a>Account</a><span class="sub-nav-sep">›</span><span>Family &amp; Caregiving</span></div>
+  <div class="page-wrap">
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:24px;">
+      <div>
+        <h1 class="page-title">Family &amp; Caregiving</h1>
+        <p class="page-subtitle">Manage caregiving relationships, authorizations, and permissions across Health100</p>
+      </div>
+      <button class="btn btn-primary" onclick="go(2)">+ Add Caregivee</button>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <!-- Who you care for -->
+        <div style="margin-bottom:24px;">
+          <div class="section-label">Who you care for</div>
+
+          <!-- Emma — Minor, all services -->
+          <div class="member-card">
+            <div class="member-avatar av-green">EN</div>
+            <div class="member-info">
+              <div class="member-name">Emma Nagam <span class="badge badge-green" style="margin-left:6px;">Minor · 10</span></div>
+              <div class="member-meta">Added Aug 18, 2026 · Guardian confirmed</div>
+              <div class="perm-grid">
+                <span class="perm-item perm-granted">💊 Pharmacy</span>
+                <span class="perm-item perm-granted">📋 Health Records</span>
+                <span class="perm-item perm-granted">🗂 PHR</span>
+                <span class="perm-item perm-none">💰 Benefits —</span>
+              </div>
+            </div>
+            <button class="btn btn-secondary btn-sm">Manage</button>
+          </div>
+
+          <!-- Robert — Adult, some pending -->
+          <div class="member-card">
+            <div class="member-avatar av-teal">RN</div>
+            <div class="member-info">
+              <div class="member-name">Robert Nagam <span class="badge badge-teal" style="margin-left:6px;">Adult · 72</span></div>
+              <div class="member-meta">Added Mar 2025 · Mutual consent active</div>
+              <div class="perm-grid">
+                <span class="perm-item perm-granted">💊 Pharmacy</span>
+                <span class="perm-item perm-pending">📋 Health Records ⏳</span>
+                <span class="perm-item perm-granted">🗂 PHR</span>
+                <span class="perm-item perm-granted">💰 Benefits</span>
+              </div>
+            </div>
+            <button class="btn btn-secondary btn-sm">Manage</button>
+          </div>
+
+          <!-- James — Pending invitation -->
+          <div class="member-card" style="border-color:var(--yellow-mid); background:var(--yellow); opacity:0.9;">
+            <div class="member-avatar av-orange">JN</div>
+            <div class="member-info">
+              <div class="member-name">James Nagam <span class="badge badge-yellow" style="margin-left:6px;">⏳ Pending</span></div>
+              <div class="member-meta">Invitation sent Aug 15, 2026 · Awaiting acceptance</div>
+              <div class="perm-grid">
+                <span class="perm-item perm-pending">💊 Pharmacy ⏳</span>
+                <span class="perm-item perm-pending">📋 Health Records ⏳</span>
+                <span class="perm-item perm-none">🗂 PHR —</span>
+                <span class="perm-item perm-none">💰 Benefits —</span>
+              </div>
+            </div>
+            <button class="btn btn-sm" style="background:var(--yellow-dark);color:white;border:none;">Resend</button>
+          </div>
+        </div>
+
+        <!-- Who cares for you -->
+        <div>
+          <div class="section-label">Who cares for you</div>
+          <div class="member-card">
+            <div class="member-avatar av-purple">BS</div>
+            <div class="member-info">
+              <div class="member-name">Brenda Smith <span class="badge badge-blue" style="margin-left:6px;">Caregiver</span></div>
+              <div class="member-meta">Active since Mar 2025</div>
+              <div class="perm-grid">
+                <span class="perm-item perm-granted">💊 Pharmacy</span>
+                <span class="perm-item perm-none">📋 Health Records —</span>
+                <span class="perm-item perm-none">🗂 PHR —</span>
+                <span class="perm-item perm-none">💰 Benefits —</span>
+              </div>
+            </div>
+            <button class="btn btn-secondary btn-sm">Manage</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right panel -->
+      <div class="sticky-panel">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-hd" style="background:var(--teal); border-bottom:none; padding:20px 22px;">
+            <div class="card-hd-title" style="color:white;">Health100 Universal Caregiving</div>
+            <div style="font-size:12px; color:rgba(255,255,255,0.75); margin-top:4px;">One platform. All health relationships.</div>
+          </div>
+          <div class="card-body" style="font-size:13px; color:var(--text-mid); line-height:1.7;">
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div style="display:flex; gap:10px; align-items:center;"><span>💊</span><span><strong style="color:var(--text);">Pharmacy</strong> — CVS Pharmacy, Caremark, Specialty</span></div>
+              <div style="display:flex; gap:10px; align-items:center;"><span>📋</span><span><strong style="color:var(--text);">Health Records</strong> — Clinical data access</span></div>
+              <div style="display:flex; gap:10px; align-items:center;"><span>🗂</span><span><strong style="color:var(--text);">PHR</strong> — Personal Health Record</span></div>
+              <div style="display:flex; gap:10px; align-items:center;"><span>💰</span><span><strong style="color:var(--text);">Benefits</strong> — Insurance &amp; coverage</span></div>
+              <div style="display:flex; gap:10px; align-items:center; opacity:0.6;"><span>🔮</span><span><strong style="color:var(--text);">Future Partners</strong> — External providers</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><div class="card-hd-title">Quick actions</div></div>
+          <div class="card-body" style="display:flex; flex-direction:column; gap:8px; padding:14px 18px;">
+            <button class="btn btn-primary" style="width:100%; justify-content:flex-start;" onclick="go(2)">+ Add a caregivee</button>
+            <button class="btn btn-secondary" style="width:100%; justify-content:flex-start;">Manage permissions</button>
+            <button class="btn btn-secondary" style="width:100%; justify-content:flex-start;">View consent history</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 2 · Add Caregivee — Select Path
+══════════════════════════════════════════════ -->
+<div class="screen" id="s2">
+  <div class="cvs-nav">
+    <div class="cvs-logo"><span class="cvs-logo-heart">❤️</span><span class="cvs-logo-text">CVS</span><span class="cvs-logo-tagline">Health100™</span></div>
+    <div class="cvs-nav-links"><div class="cvs-nav-link">Pharmacy</div><div class="cvs-nav-link">Health Records</div><div class="cvs-nav-link active">Caregiving</div><div class="cvs-nav-link">Benefits</div><div class="cvs-nav-link">Account</div></div>
+    <div class="cvs-nav-right"><div class="cvs-nav-user"><div class="cvs-nav-avatar">VN</div><span>Hi, Vani</span></div></div>
+  </div>
+  <div class="sub-nav"><a onclick="go(1)">Family &amp; Caregiving</a><span class="sub-nav-sep">›</span><span>Add Caregivee</span></div>
+  <div class="page-wrap mid">
+    <div class="page-hd">
+      <h1 class="page-title">Who are you adding?</h1>
+      <p class="page-subtitle">Choose the type of caregiving relationship you want to establish</p>
+    </div>
+
+    <div class="two-col-equal" style="margin-bottom:24px;">
+      <div class="path-tile" onclick="go(3)">
+        <div class="path-tile-icon">👧</div>
+        <div class="path-tile-title">Add a Minor</div>
+        <div class="path-tile-desc">A child under 18 for whom you are the legal parent or guardian. You will confirm your guardian status and authorize access to their records.</div>
+        <div class="path-tile-tags">
+          <span class="badge badge-teal">Under 18</span>
+          <span class="badge badge-blue">Guardian required</span>
+          <span class="badge badge-green">All services</span>
+        </div>
+      </div>
+      <div class="path-tile" onclick="go(3)">
+        <div class="path-tile-icon">🧑</div>
+        <div class="path-tile-title">Add an Adult</div>
+        <div class="path-tile-desc">A family member, spouse, or trusted adult who needs help managing their health. Both parties must consent to the caregiving relationship.</div>
+        <div class="path-tile-tags">
+          <span class="badge badge-teal">18 or older</span>
+          <span class="badge badge-blue">Mutual consent</span>
+          <span class="badge badge-yellow">Some services</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Form — Minor path shown as example -->
+    <div class="card">
+      <div class="card-hd">
+        <div class="card-hd-title">Child's Information</div>
+        <div class="card-hd-sub">Enter details to search for their health records across Health100</div>
+      </div>
+      <div class="card-body">
+        <div class="form-row-2" style="margin-bottom:18px;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">First Name <span style="color:var(--red);">*</span></label>
+            <input class="form-input filled" type="text" value="Emma" readonly />
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Last Name <span style="color:var(--red);">*</span></label>
+            <input class="form-input filled" type="text" value="Nagam" readonly />
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Date of Birth <span style="color:var(--red);">*</span></label>
+          <div class="form-row-3">
+            <select class="select-input"><option>June</option></select>
+            <select class="select-input"><option>14</option></select>
+            <input class="form-input filled" type="text" value="2015" readonly />
+          </div>
+        </div>
+      </div>
+      <div class="card-ft" style="justify-content:space-between;">
+        <button class="btn btn-ghost" onclick="go(1)">← Cancel</button>
+        <button class="btn btn-primary btn-lg" onclick="go(3)">Search Health Records →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 3 · Caregivee Discovery
+══════════════════════════════════════════════ -->
+<div class="screen" id="s3">
+  <div class="cvs-nav">
+    <div class="cvs-logo"><span class="cvs-logo-heart">❤️</span><span class="cvs-logo-text">CVS</span><span class="cvs-logo-tagline">Health100™</span></div>
+    <div class="cvs-nav-links"><div class="cvs-nav-link">Pharmacy</div><div class="cvs-nav-link">Health Records</div><div class="cvs-nav-link active">Caregiving</div><div class="cvs-nav-link">Benefits</div><div class="cvs-nav-link">Account</div></div>
+    <div class="cvs-nav-right"><div class="cvs-nav-user"><div class="cvs-nav-avatar">VN</div><span>Hi, Vani</span></div></div>
+  </div>
+  <div class="sub-nav"><a onclick="go(1)">Family &amp; Caregiving</a><span class="sub-nav-sep">›</span><a onclick="go(2)">Add Caregivee</a><span class="sub-nav-sep">›</span><span>Discovery</span></div>
+  <div class="page-wrap mid">
+    <div class="page-hd">
+      <h1 class="page-title">Searching for Emma Nagam</h1>
+      <p class="page-subtitle">Health100 searches across all connected health data sources to find a match</p>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <!-- Discovery sources -->
+        <div style="margin-bottom:20px;">
+          <div class="section-label" style="margin-bottom:12px;">Discovery sources checked</div>
+
+          <div class="discovery-source found">
+            <div class="discovery-source-icon" style="background:var(--green-light);">💊</div>
+            <div class="discovery-source-info">
+              <div class="discovery-source-title">CVS Pharmacy</div>
+              <div class="discovery-source-status" style="color:var(--green);">✓ Record found · CVS #2847</div>
+            </div>
+            <span class="badge badge-green">Matched</span>
+          </div>
+
+          <div class="discovery-source found">
+            <div class="discovery-source-icon" style="background:var(--green-light);">📋</div>
+            <div class="discovery-source-info">
+              <div class="discovery-source-title">Health Records</div>
+              <div class="discovery-source-status" style="color:var(--green);">✓ Record found · Primary care on file</div>
+            </div>
+            <span class="badge badge-green">Matched</span>
+          </div>
+
+          <div class="discovery-source found">
+            <div class="discovery-source-icon" style="background:var(--teal-light);">🗂</div>
+            <div class="discovery-source-info">
+              <div class="discovery-source-title">PHR</div>
+              <div class="discovery-source-status" style="color:var(--teal);">✓ PHR eligible · Can be created</div>
+            </div>
+            <span class="badge badge-teal">Eligible</span>
+          </div>
+
+          <div class="discovery-source not-linked">
+            <div class="discovery-source-icon" style="background:var(--bg);">💰</div>
+            <div class="discovery-source-info">
+              <div class="discovery-source-title">Benefits</div>
+              <div class="discovery-source-status">No benefits record linked</div>
+            </div>
+            <span class="badge badge-gray">Not linked</span>
+          </div>
+
+          <div class="discovery-source not-linked" style="opacity:0.6;">
+            <div class="discovery-source-icon" style="background:var(--purple-light);">🔮</div>
+            <div class="discovery-source-info">
+              <div class="discovery-source-title">External Partners</div>
+              <div class="discovery-source-status">Not available in Phase 1</div>
+            </div>
+            <span class="badge badge-gray">Future</span>
+          </div>
+        </div>
+
+        <!-- Match found card -->
+        <div style="border:2px solid var(--green); border-radius:var(--radius-lg); overflow:hidden; margin-bottom:16px;">
+          <div style="background:var(--green); padding:14px 20px; display:flex; align-items:center; gap:10px;">
+            <span style="font-size:20px; color:white;">✓</span>
+            <span style="color:white; font-size:15px; font-weight:700;">Match found — 3 of 4 sources confirmed</span>
+          </div>
+          <div style="padding:20px; background:white;">
+            <div style="display:flex; align-items:center; gap:16px; margin-bottom:16px;">
+              <div style="width:52px; height:52px; border-radius:26px; background:linear-gradient(135deg,var(--green),#00CC66); display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:700; color:white;">EN</div>
+              <div>
+                <div style="font-size:18px; font-weight:700; color:var(--text);">Emma Nagam</div>
+                <div style="font-size:13px; color:var(--text-light);">Minor · Date of Birth: June 14, 2015 · Age 10</div>
+              </div>
+              <div style="margin-left:auto;"><span class="badge badge-green" style="font-size:12px; padding:4px 12px;">High Confidence</span></div>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px;">
+              <div style="background:var(--bg); border-radius:var(--radius-md); padding:10px 14px;"><div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-light); margin-bottom:3px;">DOB</div><div style="font-size:14px; font-weight:600;">Jun 14, 2015</div></div>
+              <div style="background:var(--bg); border-radius:var(--radius-md); padding:10px 14px;"><div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-light); margin-bottom:3px;">Sources</div><div style="font-size:14px; font-weight:600;">3 matched</div></div>
+              <div style="background:var(--bg); border-radius:var(--radius-md); padding:10px 14px;"><div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-light); margin-bottom:3px;">Confidence</div><div style="font-size:14px; font-weight:600; color:var(--green);">High</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-ft" style="background:white; border:1px solid var(--border); border-radius:var(--radius-lg); justify-content:space-between; display:flex; padding:14px 20px;">
+          <button class="btn btn-ghost" onclick="go(2)">← Search again</button>
+          <button class="btn btn-primary btn-lg" onclick="go(4)">Proceed to Identity Verification →</button>
+        </div>
+      </div>
+
+      <div class="sticky-panel">
+        <div class="help-card">
+          <div class="help-card-icon">🔍</div>
+          <div class="help-card-title">How discovery works</div>
+          <div class="help-card-text">Health100 searches all connected health data sources to verify the caregivee's identity and determine available services.</div>
+          <ul class="help-list">
+            <li>Pharmacy records confirm medication history</li>
+            <li>Health records confirm clinical identity</li>
+            <li>PHR eligibility checked separately</li>
+            <li>Benefits linkage checked if available</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 4 · Trust & Identity Verification
+══════════════════════════════════════════════ -->
+<div class="screen" id="s4">
+  <div class="cvs-nav">
+    <div class="cvs-logo"><span class="cvs-logo-heart">❤️</span><span class="cvs-logo-text">CVS</span><span class="cvs-logo-tagline">Health100™</span></div>
+    <div class="cvs-nav-links"><div class="cvs-nav-link">Pharmacy</div><div class="cvs-nav-link">Health Records</div><div class="cvs-nav-link active">Caregiving</div><div class="cvs-nav-link">Benefits</div><div class="cvs-nav-link">Account</div></div>
+    <div class="cvs-nav-right"><div class="cvs-nav-user"><div class="cvs-nav-avatar">VN</div><span>Hi, Vani</span></div></div>
+  </div>
+  <div class="sub-nav"><a onclick="go(1)">Family &amp; Caregiving</a><span class="sub-nav-sep">›</span><a onclick="go(2)">Add Caregivee</a><span class="sub-nav-sep">›</span><span>Identity Verification</span></div>
+  <div class="page-wrap mid">
+    <div class="page-hd">
+      <h1 class="page-title">Identity &amp; Trust Verification</h1>
+      <p class="page-subtitle">Caregiving relationships require a verified identity. Your current trust level and what's needed for this relationship.</p>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <div class="alert alert-info">
+          <span class="alert-icon">🔐</span>
+          <div>Adding a minor as a caregivee requires <strong>LOA2 — Verified Identity</strong>. Your account is currently at LOA1. Complete identity verification to proceed.</div>
+        </div>
+
+        <!-- Trust level visualization -->
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-hd"><div class="card-hd-title">Level of Assurance (LOA) — Identity Trust Levels</div></div>
+          <div class="card-body">
+            <div class="trust-track">
+              <div class="trust-tier current">
+                <div class="trust-tier-label">LOA1</div>
+                <div class="trust-tier-name">Basic Account</div>
+                <div class="trust-tier-desc">Email &amp; password authentication. Standard account access.</div>
+                <span class="trust-tier-badge" style="background:var(--blue-light); color:var(--blue);">Your current level</span>
+              </div>
+              <div class="trust-connector" style="background:linear-gradient(to right, var(--blue-mid), var(--teal-mid));"></div>
+              <div class="trust-tier required">
+                <div class="trust-tier-label">LOA2</div>
+                <div class="trust-tier-name">Verified Identity</div>
+                <div class="trust-tier-desc">Government ID verified. Required for minor caregiving &amp; health record access.</div>
+                <span class="trust-tier-badge" style="background:var(--teal-light); color:var(--teal);">Required for this</span>
+              </div>
+              <div class="trust-connector" style="background:var(--border);"></div>
+              <div class="trust-tier locked">
+                <div class="trust-tier-label">IL2</div>
+                <div class="trust-tier-name">High Trust</div>
+                <div class="trust-tier-desc">Enhanced verification. Required for external provider integrations &amp; benefits proxy.</div>
+                <span class="trust-tier-badge" style="background:var(--bg); color:var(--text-light);">Future use</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- What each level unlocks -->
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-hd"><div class="card-hd-title">What each trust level unlocks</div></div>
+          <div class="card-body" style="padding:0;">
+            <div style="display:grid; grid-template-columns:repeat(3,1fr);">
+              <div style="padding:16px; border-right:1px solid var(--border);">
+                <div style="font-size:12px; font-weight:700; color:var(--blue); text-transform:uppercase; margin-bottom:10px;">LOA1 — Basic</div>
+                <div style="font-size:12px; color:var(--text-mid); line-height:1.7;">View own prescriptions<br/>Basic account features<br/>Invite an adult caregiver</div>
+              </div>
+              <div style="padding:16px; border-right:1px solid var(--border); background:var(--teal-light);">
+                <div style="font-size:12px; font-weight:700; color:var(--teal); text-transform:uppercase; margin-bottom:10px;">LOA2 — Verified ✓</div>
+                <div style="font-size:12px; color:var(--text-mid); line-height:1.7;">Add minor caregivees<br/>Access health records<br/>Create &amp; manage PHR<br/>Adult caregiving consent</div>
+              </div>
+              <div style="padding:16px; opacity:0.6;">
+                <div style="font-size:12px; font-weight:700; color:var(--purple); text-transform:uppercase; margin-bottom:10px;">IL2 — High Trust</div>
+                <div style="font-size:12px; color:var(--text-mid); line-height:1.7;">Benefits proxy access<br/>External provider data<br/>Clinical record sharing<br/>Cross-org caregiving</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Verification CTA -->
+        <div style="border:2px solid var(--teal); border-radius:var(--radius-lg); padding:20px; background:var(--teal-light); display:flex; gap:16px; align-items:center;">
+          <span style="font-size:36px;">🪪</span>
+          <div style="flex:1;">
+            <div style="font-size:15px; font-weight:700; color:var(--text); margin-bottom:4px;">Verify your identity to continue</div>
+            <div style="font-size:13px; color:var(--text-mid);">Takes about 2 minutes. You'll need a government-issued ID (driver's license or passport).</div>
+          </div>
+          <button class="btn btn-primary btn-lg" onclick="go(5)">Verify Identity →</button>
+        </div>
+      </div>
+
+      <div class="sticky-panel">
+        <div class="help-card">
+          <div class="help-card-icon">🛡️</div>
+          <div class="help-card-title">Why we verify identity</div>
+          <div class="help-card-text">Accessing another person's health records is a sensitive action regulated by HIPAA and state privacy laws. Identity verification ensures only legitimate guardians can act on behalf of a minor.</div>
+          <ul class="help-list">
+            <li>Protects the caregivee's health privacy</li>
+            <li>Required by federal and state law</li>
+            <li>Verification stored — not repeated</li>
+            <li>Can be upgraded at any time</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 5 · Consent & Authorization
+══════════════════════════════════════════════ -->
+<div class="screen" id="s5">
+  <div class="cvs-nav">
+    <div class="cvs-logo"><span class="cvs-logo-heart">❤️</span><span class="cvs-logo-text">CVS</span><span class="cvs-logo-tagline">Health100™</span></div>
+    <div class="cvs-nav-links"><div class="cvs-nav-link">Pharmacy</div><div class="cvs-nav-link">Health Records</div><div class="cvs-nav-link active">Caregiving</div><div class="cvs-nav-link">Benefits</div><div class="cvs-nav-link">Account</div></div>
+    <div class="cvs-nav-right"><div class="cvs-nav-user"><div class="cvs-nav-avatar">VN</div><span>Hi, Vani</span></div></div>
+  </div>
+  <div class="sub-nav"><a onclick="go(1)">Family &amp; Caregiving</a><span class="sub-nav-sep">›</span><a onclick="go(2)">Add Caregivee</a><span class="sub-nav-sep">›</span><span>Consent &amp; Authorization</span></div>
+  <div class="page-wrap mid">
+    <div class="page-hd">
+      <h1 class="page-title">Consent &amp; Authorization</h1>
+      <p class="page-subtitle">Choose which Health100 services you want to access on behalf of <strong>Emma Nagam</strong>. You can change these at any time.</p>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-hd">
+            <div class="card-hd-title">Select services to authorize</div>
+            <div class="card-hd-sub">Consent is collected per service — you control exactly what access is granted</div>
+          </div>
+          <div class="card-body">
+            <div class="service-grid">
+              <div class="service-tile enabled">
+                <div class="service-tile-header">
+                  <span class="service-tile-icon">💊</span>
+                  <span class="service-tile-name">Pharmacy Access</span>
+                  <div class="service-tile-toggle on"></div>
+                </div>
+                <div class="service-tile-desc">View prescriptions, request refills, manage pickup and mail order across all pharmacy services.</div>
+                <div style="margin-top:8px;"><span class="badge badge-green">Enabled</span></div>
+              </div>
+
+              <div class="service-tile enabled">
+                <div class="service-tile-header">
+                  <span class="service-tile-icon">📋</span>
+                  <span class="service-tile-name">Health Records</span>
+                  <div class="service-tile-toggle on"></div>
+                </div>
+                <div class="service-tile-desc">Access clinical visit summaries, lab results, immunization records from connected providers.</div>
+                <div style="margin-top:8px;"><span class="badge badge-green">Enabled</span></div>
+              </div>
+
+              <div class="service-tile enabled">
+                <div class="service-tile-header">
+                  <span class="service-tile-icon">🗂</span>
+                  <span class="service-tile-name">PHR Access</span>
+                  <div class="service-tile-toggle on"></div>
+                </div>
+                <div class="service-tile-desc">Create and manage a Personal Health Record that consolidates health information from multiple sources.</div>
+                <div style="margin-top:8px;"><span class="badge badge-teal">Create PHR</span></div>
+              </div>
+
+              <div class="service-tile pending">
+                <div class="service-tile-header">
+                  <span class="service-tile-icon">💰</span>
+                  <span class="service-tile-name">Benefits Access</span>
+                  <div class="service-tile-toggle"></div>
+                </div>
+                <div class="service-tile-desc">View insurance coverage, claims history, and benefits information. Requires benefits plan linkage.</div>
+                <div style="margin-top:8px;"><span class="badge badge-yellow">Not linked</span></div>
+              </div>
+
+              <div class="service-tile future" style="grid-column:span 2;">
+                <div class="service-tile-header">
+                  <span class="service-tile-icon">🔮</span>
+                  <span class="service-tile-name">External Health Partners</span>
+                  <div class="service-tile-toggle" style="opacity:0.4;"></div>
+                </div>
+                <div class="service-tile-desc">Future integration with external health partners (e.g. Kaiser, UnitedHealthcare). Health100 will request and manage consent when available.</div>
+                <div style="margin-top:8px;"><span class="badge badge-purple">Coming soon</span></div>
+              </div>
+            </div>
+
+            <!-- Guardian attestation -->
+            <div style="background:var(--teal-light); border:1.5px solid var(--teal-mid); border-radius:var(--radius-md); padding:16px; display:flex; align-items:flex-start; gap:12px; margin-top:4px;">
+              <div style="width:22px; height:22px; border-radius:5px; background:var(--teal); display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;">
+                <span style="color:white; font-size:13px; font-weight:700;">✓</span>
+              </div>
+              <div style="font-size:13px; color:var(--text); line-height:1.6;">I confirm that I am the <strong>legal guardian/parent</strong> of the child and have authority to view and access their records across the selected services.</div>
+            </div>
+          </div>
+          <div class="card-ft" style="justify-content:space-between;">
+            <button class="btn btn-ghost" onclick="go(4)">← Back</button>
+            <div style="display:flex; gap:10px;">
+              <button class="btn btn-secondary" onclick="go(1)">Cancel</button>
+              <button class="btn btn-primary btn-lg" onclick="go(6)">Confirm &amp; Establish Relationship →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sticky-panel">
+        <div class="help-card" style="margin-bottom:16px;">
+          <div class="help-card-icon">🔑</div>
+          <div class="help-card-title">Consent is modular</div>
+          <div class="help-card-text">Health100 collects consent per service. You can grant access to Pharmacy without granting access to Health Records — each is independent.</div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><div class="card-hd-title">Privacy &amp; compliance</div></div>
+          <div class="card-body" style="font-size:13px; color:var(--text-mid); line-height:1.7;">
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <div style="display:flex; gap:8px;"><span>🏛</span><span>HIPAA compliant</span></div>
+              <div style="display:flex; gap:8px;"><span>🔒</span><span>Consent stored securely</span></div>
+              <div style="display:flex; gap:8px;"><span>↩️</span><span>Revocable at any time</span></div>
+              <div style="display:flex; gap:8px;"><span>📜</span><span>Audit log maintained</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 6 · Relationship Established
+══════════════════════════════════════════════ -->
+<div class="screen" id="s6">
+  <div class="cvs-nav">
+    <div class="cvs-logo"><span class="cvs-logo-heart">❤️</span><span class="cvs-logo-text">CVS</span><span class="cvs-logo-tagline">Health100™</span></div>
+    <div class="cvs-nav-links"><div class="cvs-nav-link">Pharmacy</div><div class="cvs-nav-link">Health Records</div><div class="cvs-nav-link active">Caregiving</div><div class="cvs-nav-link">Benefits</div><div class="cvs-nav-link">Account</div></div>
+    <div class="cvs-nav-right"><div class="cvs-nav-user"><div class="cvs-nav-avatar">VN</div><span>Hi, Vani</span></div></div>
+  </div>
+  <div class="sub-nav"><a onclick="go(1)">Family &amp; Caregiving</a><span class="sub-nav-sep">›</span><span>Emma Nagam Added</span></div>
+  <div class="page-wrap narrow">
+    <div class="card">
+      <div class="card-body">
+        <div class="success-hero">
+          <div class="success-circle">✓</div>
+          <h1 class="success-title">Relationship Established</h1>
+          <p class="success-sub">Emma Nagam has been added as a caregivee. Access is active for authorized services.</p>
+        </div>
+
+        <!-- Authorized services -->
+        <div style="margin-bottom:20px;">
+          <div class="section-label">Authorized services</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div style="background:var(--green-light); border:1px solid var(--green-mid); border-radius:var(--radius-md); padding:12px 14px; display:flex; gap:10px; align-items:center;">
+              <span style="font-size:20px;">💊</span>
+              <div><div style="font-size:13px; font-weight:700; color:var(--green);">Pharmacy</div><div style="font-size:11px; color:var(--text-light);">Active</div></div>
+            </div>
+            <div style="background:var(--green-light); border:1px solid var(--green-mid); border-radius:var(--radius-md); padding:12px 14px; display:flex; gap:10px; align-items:center;">
+              <span style="font-size:20px;">📋</span>
+              <div><div style="font-size:13px; font-weight:700; color:var(--green);">Health Records</div><div style="font-size:11px; color:var(--text-light);">Active</div></div>
+            </div>
+            <div style="background:var(--teal-light); border:1px solid var(--teal-mid); border-radius:var(--radius-md); padding:12px 14px; display:flex; gap:10px; align-items:center;">
+              <span style="font-size:20px;">🗂</span>
+              <div><div style="font-size:13px; font-weight:700; color:var(--teal);">PHR</div><div style="font-size:11px; color:var(--text-light);">Created</div></div>
+            </div>
+            <div style="background:var(--yellow); border:1px solid var(--yellow-mid); border-radius:var(--radius-md); padding:12px 14px; display:flex; gap:10px; align-items:center;">
+              <span style="font-size:20px;">💰</span>
+              <div><div style="font-size:13px; font-weight:700; color:var(--yellow-dark);">Benefits</div><div style="font-size:11px; color:var(--text-light);">Not linked</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Consent summary -->
+        <div style="background:var(--bg); border-radius:var(--radius-lg); padding:16px 18px; margin-bottom:20px;">
+          <div style="font-size:12px; font-weight:700; text-transform:uppercase; color:var(--text-light); margin-bottom:10px;">Consent record</div>
+          <div style="display:flex; flex-direction:column; gap:6px; font-size:13px; color:var(--text-mid);">
+            <div style="display:flex; justify-content:space-between;"><span>Relationship established</span><span style="color:var(--text); font-weight:600;">Aug 19, 2026</span></div>
+            <div style="display:flex; justify-content:space-between;"><span>Guardian attestation</span><span style="color:var(--text); font-weight:600;">Confirmed</span></div>
+            <div style="display:flex; justify-content:space-between;"><span>Identity verification</span><span style="color:var(--text); font-weight:600;">LOA2</span></div>
+            <div style="display:flex; justify-content:space-between;"><span>Last consent date</span><span style="color:var(--text); font-weight:600;">Aug 19, 2026</span></div>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+          <button class="btn btn-primary btn-lg" onclick="go(1)">💊 View Emma's Records →</button>
+          <button class="btn btn-secondary btn-lg" onclick="go(1)">← Back to Family Hub</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 7 · Platform Architecture View
+══════════════════════════════════════════════ -->
+<div class="screen" id="s7">
+  <div class="cvs-nav">
+    <div class="cvs-logo"><span class="cvs-logo-heart">❤️</span><span class="cvs-logo-text">CVS</span><span class="cvs-logo-tagline">Health100™</span></div>
+    <div class="cvs-nav-links"><div class="cvs-nav-link">Pharmacy</div><div class="cvs-nav-link">Health Records</div><div class="cvs-nav-link active">Caregiving</div><div class="cvs-nav-link">Benefits</div><div class="cvs-nav-link">Account</div></div>
+    <div class="cvs-nav-right"><div class="cvs-nav-user"><div class="cvs-nav-avatar">VN</div><span>Hi, Vani</span></div></div>
+  </div>
+  <div class="sub-nav"><span>Platform Architecture &amp; Integration View</span></div>
+  <div class="page-wrap">
+    <div class="page-hd">
+      <h1 class="page-title">Health100 Caregiving Platform</h1>
+      <p class="page-subtitle">Health100 is the system of record for caregiving relationships. Consumer teams consume caregiving APIs and own their downstream experiences.</p>
+    </div>
+
+    <!-- Architecture diagram -->
+    <div class="card" style="margin-bottom:24px;">
+      <div class="card-hd"><div class="card-hd-title">Platform Architecture</div><div class="card-hd-sub">Health100 Account/Caregiving sits at the center — all relationships flow through it</div></div>
+      <div class="card-body">
+        <div class="platform-diagram">
+          <!-- Inputs -->
+          <div class="platform-inputs">
+            <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-light); margin-bottom:12px; letter-spacing:0.5px;">Caregiving Inputs</div>
+            <div class="platform-node"><div class="platform-node-icon">🧑</div><div class="platform-node-text"><div class="platform-node-title">Caregiver</div><div class="platform-node-sub">Authenticated H100 user</div></div></div>
+            <div class="platform-node"><div class="platform-node-icon">👥</div><div class="platform-node-text"><div class="platform-node-title">Caregivee</div><div class="platform-node-sub">Minor, adult, any relationship</div></div></div>
+            <div class="platform-node"><div class="platform-node-icon">🪪</div><div class="platform-node-text"><div class="platform-node-title">Identity Verification</div><div class="platform-node-sub">LOA1 · LOA2 · IL2</div></div></div>
+            <div class="platform-node"><div class="platform-node-icon">📝</div><div class="platform-node-text"><div class="platform-node-title">Consent &amp; Authorization</div><div class="platform-node-sub">Per-service, revocable</div></div></div>
+          </div>
+
+          <!-- Center arrows + hub -->
+          <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; padding:0 8px;">
+            <div style="display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
+              <div style="font-size:20px; color:var(--teal-mid);">→</div>
+            </div>
+            <div class="platform-hub">
+              <div style="font-size:28px; margin-bottom:8px;">❤️</div>
+              <div class="platform-hub-title">Health100</div>
+              <div style="font-size:12px; opacity:0.8; margin:4px 0;">Account &amp; Caregiving</div>
+              <div style="height:1px; background:rgba(255,255,255,0.2); margin:10px 0;"></div>
+              <div style="font-size:11px; opacity:0.7; line-height:1.6;">System of record<br/>Relationship mgmt<br/>Consent hub<br/>API provider</div>
+            </div>
+            <div style="display:flex; align-items:center; justify-content:center; margin-top:16px;">
+              <div style="font-size:20px; color:var(--teal-mid);">→</div>
+            </div>
+          </div>
+
+          <!-- Outputs -->
+          <div class="platform-outputs">
+            <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-light); margin-bottom:12px; letter-spacing:0.5px;">Consumer Experiences</div>
+            <div class="platform-node"><div class="platform-node-icon">💊</div><div class="platform-node-text"><div class="platform-node-title">Pharmacy</div><div class="platform-node-sub">CVS Pharmacy · Caremark · Specialty</div></div></div>
+            <div class="platform-node"><div class="platform-node-icon">📋</div><div class="platform-node-text"><div class="platform-node-title">Health Records</div><div class="platform-node-sub">Clinical data · Labs · Visits</div></div></div>
+            <div class="platform-node"><div class="platform-node-icon">🗂</div><div class="platform-node-text"><div class="platform-node-title">PHR</div><div class="platform-node-sub">Personal Health Record</div></div></div>
+            <div class="platform-node"><div class="platform-node-icon">💰</div><div class="platform-node-text"><div class="platform-node-title">Benefits</div><div class="platform-node-sub">Insurance · Coverage · Claims</div></div></div>
+            <div class="platform-node future"><div class="platform-node-icon">🔮</div><div class="platform-node-text"><div class="platform-node-title">Future Partners</div><div class="platform-node-sub">Kaiser · UHC · External providers</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ownership model -->
+    <div class="card" style="margin-bottom:24px;">
+      <div class="card-hd"><div class="card-hd-title">Service Ownership Model</div><div class="card-hd-sub">Account Team owns the relationship layer — consumer teams own the experience layer</div></div>
+      <div class="card-body" style="padding:0;">
+        <div class="platform-ownership" style="padding:22px; gap:16px;">
+          <div class="ownership-box" style="border-color:var(--teal-mid); background:var(--teal-light);">
+            <div class="ownership-box-title" style="color:var(--teal);">🏛 Account / Caregiving Team owns</div>
+            <div class="ownership-item">👥 Caregiver discovery &amp; matching</div>
+            <div class="ownership-item">🔗 Relationship creation &amp; lifecycle</div>
+            <div class="ownership-item">📝 Consent collection &amp; storage</div>
+            <div class="ownership-item">🪪 Identity &amp; trust verification</div>
+            <div class="ownership-item">🔑 Permission management</div>
+            <div class="ownership-item">📡 Caregiving API exposure</div>
+          </div>
+          <div class="ownership-box">
+            <div class="ownership-box-title">📱 Consumer Teams adopt</div>
+            <div class="ownership-item">💊 Pharmacy — prescription views</div>
+            <div class="ownership-item">📋 Health — clinical record display</div>
+            <div class="ownership-item">🗂 PHR team — record aggregation</div>
+            <div class="ownership-item">💰 Benefits — coverage display</div>
+            <div class="ownership-item">🔮 Future partners — ext. integration</div>
+            <div class="ownership-item">↩️ Redirect users to Account UX</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- API model -->
+    <div class="alert alert-purple">
+      <span class="alert-icon">💡</span>
+      <div style="font-size:13px; line-height:1.7;"><strong>Design principle:</strong> Health100 exposes caregiving context via API. Consumer teams pull relationships, interpret permissions, and build product experiences. No consumer team should build their own relationship management — all flows redirect to Account-owned UX.</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 8 · Scenario A — Add Minor Child
+══════════════════════════════════════════════ -->
+<div class="screen" id="s8">
+  <div class="cvs-nav">
+    <div class="cvs-logo"><span class="cvs-logo-heart">❤️</span><span class="cvs-logo-text">CVS</span><span class="cvs-logo-tagline">Health100™</span></div>
+    <div class="cvs-nav-links"><div class="cvs-nav-link active">Caregiving</div></div>
+    <div class="cvs-nav-right"><div class="cvs-nav-user"><div class="cvs-nav-avatar">VN</div><span>Hi, Vani</span></div></div>
+  </div>
+  <div class="page-wrap">
+    <div class="scenario-header">
+      <div class="scenario-tag">Scenario A · Future State</div>
+      <div class="scenario-title">Adult Caregiver Adding a Minor Child</div>
+      <div class="scenario-desc">A parent or legal guardian adds their minor child as a caregivee on Health100. This flow covers discovery, identity verification, and multi-service consent.</div>
+      <div class="scenario-personas">
+        <div class="scenario-persona">👩 Vani Nagam — Parent/Caregiver · LOA1</div>
+        <div class="scenario-persona">👧 Emma Nagam — Minor · Age 10</div>
+        <div class="scenario-persona">🔐 LOA2 required</div>
+      </div>
+    </div>
+    <div class="journey-steps">
+      <div class="journey-step"><div class="journey-step-icon">🏠</div><div class="journey-step-num">Step 1</div><div class="journey-step-title">Family Hub</div><div class="journey-step-desc">Parent lands on Family &amp; Caregiving. Taps "+ Add Caregivee" and selects Minor path.</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step"><div class="journey-step-icon">🔍</div><div class="journey-step-num">Step 2</div><div class="journey-step-title">Discovery</div><div class="journey-step-desc">Health100 searches Pharmacy, Health Records, PHR sources. High-confidence match found.</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step"><div class="journey-step-icon">🪪</div><div class="journey-step-num">Step 3</div><div class="journey-step-title">Identity Upgrade</div><div class="journey-step-desc">Parent upgrades from LOA1 to LOA2 via government ID. One-time verification stored.</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step"><div class="journey-step-icon">📝</div><div class="journey-step-num">Step 4</div><div class="journey-step-title">Guardian Attestation &amp; Consent</div><div class="journey-step-desc">Parent confirms guardian status. Selects Pharmacy, Health Records, PHR. Consents per service.</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step" style="border-right:1px solid var(--border); border-radius:0 var(--radius-md) var(--radius-md) 0;"><div class="journey-step-icon">✅</div><div class="journey-step-num">Step 5</div><div class="journey-step-title">Relationship Active</div><div class="journey-step-desc">Caregiving relationship established. Consumer apps (Pharmacy, Health) now show Emma's data under Vani's account.</div></div>
+    </div>
+    <div class="scenario-outcome">
+      <span style="font-size:32px;">✅</span>
+      <div><div style="font-size:15px; font-weight:700; color:var(--teal); margin-bottom:4px;">Outcome</div><div style="font-size:13px; color:var(--text-mid); line-height:1.6;">Emma appears in Vani's Family Hub with Pharmacy ✓, Health Records ✓, PHR ✓ active. Benefits not yet linked. Consent stored in Health100 — consumer apps pull caregiving context via API.</div></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 9 · Scenario B — Add Spouse
+══════════════════════════════════════════════ -->
+<div class="screen" id="s9">
+  <div class="cvs-nav">
+    <div class="cvs-logo"><span class="cvs-logo-heart">❤️</span><span class="cvs-logo-text">CVS</span><span class="cvs-logo-tagline">Health100™</span></div>
+    <div class="cvs-nav-links"><div class="cvs-nav-link active">Caregiving</div></div>
+    <div class="cvs-nav-right"><div class="cvs-nav-user"><div class="cvs-nav-avatar">VN</div><span>Hi, Vani</span></div></div>
+  </div>
+  <div class="page-wrap">
+    <div class="scenario-header">
+      <div class="scenario-tag">Scenario B · Future State</div>
+      <div class="scenario-title">Adult Caregiver Adding a Spouse</div>
+      <div class="scenario-desc">An adult adds their spouse as a caregivee. Unlike minors, adult caregiving requires mutual consent from both parties. The caregivee must actively accept.</div>
+      <div class="scenario-personas">
+        <div class="scenario-persona">👩 Vani Nagam — Caregiver · LOA1</div>
+        <div class="scenario-persona">👨 Raj Nagam — Adult Caregivee · Must accept</div>
+        <div class="scenario-persona">🤝 Mutual consent required</div>
+      </div>
+    </div>
+    <div class="journey-steps">
+      <div class="journey-step"><div class="journey-step-icon">🏠</div><div class="journey-step-num">Step 1</div><div class="journey-step-title">Family Hub</div><div class="journey-step-desc">Vani selects "Add Adult" path. Enters Raj's name and DOB. Health100 searches for a match.</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step"><div class="journey-step-icon">📨</div><div class="journey-step-num">Step 2</div><div class="journey-step-title">Invitation Sent</div><div class="journey-step-desc">Health100 sends Raj an invitation via email/push. Raj must explicitly accept to establish the relationship.</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step"><div class="journey-step-icon">✋</div><div class="journey-step-num">Step 3</div><div class="journey-step-title">Raj Accepts</div><div class="journey-step-desc">Raj reviews the request in his Health100 account. Selects which services he allows Vani to access. Consents per service.</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step"><div class="journey-step-icon">📝</div><div class="journey-step-num">Step 4</div><div class="journey-step-title">Permissions Set</div><div class="journey-step-desc">Raj grants Vani access to Pharmacy only. Health Records and PHR remain private. Relationship is partial-access.</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step" style="border-right:1px solid var(--border); border-radius:0 var(--radius-md) var(--radius-md) 0;"><div class="journey-step-icon">✅</div><div class="journey-step-num">Step 5</div><div class="journey-step-title">Relationship Active</div><div class="journey-step-desc">Raj appears in Vani's hub with Pharmacy ✓ only. Either party can modify or revoke at any time.</div></div>
+    </div>
+    <div class="scenario-outcome">
+      <span style="font-size:32px;">✅</span>
+      <div><div style="font-size:15px; font-weight:700; color:var(--teal); margin-bottom:4px;">Outcome</div><div style="font-size:13px; color:var(--text-mid); line-height:1.6;">Adult caregiving uses mutual consent — the caregivee controls what is shared. Health100 enforces this model. Relationship is bidirectional and revocable by either party.</div></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 10 · Scenario C — No CVS → Caregiver
+══════════════════════════════════════════════ -->
+<div class="screen" id="s10">
+  <div class="cvs-nav">
+    <div class="cvs-logo"><span class="cvs-logo-heart">❤️</span><span class="cvs-logo-text">CVS</span><span class="cvs-logo-tagline">Health100™</span></div>
+    <div class="cvs-nav-links"><div class="cvs-nav-link active">Caregiving</div></div>
+    <div class="cvs-nav-right"><div class="cvs-nav-user"><div class="cvs-nav-avatar">?</div><span>New User</span></div></div>
+  </div>
+  <div class="page-wrap">
+    <div class="scenario-header">
+      <div class="scenario-tag">Scenario C · Future State</div>
+      <div class="scenario-title">User with No CVS Relationship Becoming a Caregiver</div>
+      <div class="scenario-desc">A person with no existing CVS or Health100 account is invited to become a caregiver by an existing H100 user. This is the onboarding path for external caregivers.</div>
+      <div class="scenario-personas">
+        <div class="scenario-persona">👩 Vani Nagam — Existing H100 user · Invites caregiver</div>
+        <div class="scenario-persona">👤 John Smith — No CVS account · New to Health100</div>
+      </div>
+    </div>
+    <div class="journey-steps">
+      <div class="journey-step"><div class="journey-step-icon">📨</div><div class="journey-step-num">Step 1</div><div class="journey-step-title">Invitation Received</div><div class="journey-step-desc">John receives an email invitation from Vani. Link takes him to Health100 account creation — no prior CVS account required.</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step"><div class="journey-step-icon">📝</div><div class="journey-step-num">Step 2</div><div class="journey-step-title">Account Creation</div><div class="journey-step-desc">John creates a Health100 account with email/password (LOA1). Account created independent of CVS Pharmacy.</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step"><div class="journey-step-icon">🪪</div><div class="journey-step-num">Step 3</div><div class="journey-step-title">Identity Verification</div><div class="journey-step-desc">John verifies identity to reach LOA2. Required to accept caregiving responsibilities and access health data.</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step"><div class="journey-step-icon">✋</div><div class="journey-step-num">Step 4</div><div class="journey-step-title">Accept Relationship</div><div class="journey-step-desc">John reviews Vani's request, sees which services he will have access to, and accepts the caregiving role.</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step" style="border-right:1px solid var(--border); border-radius:0 var(--radius-md) var(--radius-md) 0;"><div class="journey-step-icon">✅</div><div class="journey-step-num">Step 5</div><div class="journey-step-title">Caregiver Active</div><div class="journey-step-desc">John appears in Vani's "People who care for me" section. No CVS Pharmacy account needed — Health100 is the platform.</div></div>
+    </div>
+    <div class="scenario-outcome">
+      <span style="font-size:32px;">✅</span>
+      <div><div style="font-size:15px; font-weight:700; color:var(--teal); margin-bottom:4px;">Outcome</div><div style="font-size:13px; color:var(--text-mid); line-height:1.6;">Universal caregiving: no CVS Pharmacy account required. Health100 is the platform — caregiving is not pharmacy-dependent. New user onboarding is driven by the caregiving invitation.</div></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 11 · Scenario D — No CVS → Add Minor
+══════════════════════════════════════════════ -->
+<div class="screen" id="s11">
+  <div class="cvs-nav">
+    <div class="cvs-logo"><span class="cvs-logo-heart">❤️</span><span class="cvs-logo-text">CVS</span><span class="cvs-logo-tagline">Health100™</span></div>
+    <div class="cvs-nav-links"><div class="cvs-nav-link active">Caregiving</div></div>
+    <div class="cvs-nav-right"><div class="cvs-nav-user"><div class="cvs-nav-avatar">?</div><span>New User</span></div></div>
+  </div>
+  <div class="page-wrap">
+    <div class="scenario-header">
+      <div class="scenario-tag">Scenario D · Future State</div>
+      <div class="scenario-title">User with No CVS Relationship Adding a Minor</div>
+      <div class="scenario-desc">A parent with no existing CVS/Health100 account wants to add their child. This scenario requires the highest trust and a more guided onboarding experience.</div>
+      <div class="scenario-personas">
+        <div class="scenario-persona">👤 New Parent — No CVS account</div>
+        <div class="scenario-persona">👧 Child — May or may not have CVS records</div>
+        <div class="scenario-persona">🔐 IL2 trust level may be required</div>
+      </div>
+    </div>
+    <div class="journey-steps">
+      <div class="journey-step"><div class="journey-step-icon">📝</div><div class="journey-step-num">Step 1</div><div class="journey-step-title">Account Creation</div><div class="journey-step-desc">Parent creates Health100 account. Informed that adding a minor requires identity verification (LOA2 minimum).</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step"><div class="journey-step-icon">🪪</div><div class="journey-step-num">Step 2</div><div class="journey-step-title">Identity Verification</div><div class="journey-step-desc">Parent completes government ID verification to reach LOA2. May require IL2 if the child has no existing H100 records.</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step"><div class="journey-step-icon">🔍</div><div class="journey-step-num">Step 3</div><div class="journey-step-title">Discovery Attempt</div><div class="journey-step-desc">Health100 searches for child records. If no records found, guided flow to create foundational records via partner intake.</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step"><div class="journey-step-icon">✋</div><div class="journey-step-num">Step 4</div><div class="journey-step-title">Guardian Attestation</div><div class="journey-step-desc">Legal guardian confirms relationship. System may require document upload if confidence is low.</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step" style="border-right:1px solid var(--border); border-radius:0 var(--radius-md) var(--radius-md) 0;"><div class="journey-step-icon">✅</div><div class="journey-step-num">Step 5</div><div class="journey-step-title">Relationship Created</div><div class="journey-step-desc">Caregiving relationship created. Initially limited services — expands as child's records are connected over time.</div></div>
+    </div>
+    <div class="scenario-outcome">
+      <span style="font-size:32px;">✅</span>
+      <div><div style="font-size:15px; font-weight:700; color:var(--teal); margin-bottom:4px;">Outcome</div><div style="font-size:13px; color:var(--text-mid); line-height:1.6;">Caregiving is not blocked by missing pharmacy records. The relationship is created first — services are linked progressively as the child's health records are connected to Health100.</div></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 12 · Scenario E — Minor Turns 18
+══════════════════════════════════════════════ -->
+<div class="screen" id="s12">
+  <div class="cvs-nav">
+    <div class="cvs-logo"><span class="cvs-logo-heart">❤️</span><span class="cvs-logo-text">CVS</span><span class="cvs-logo-tagline">Health100™</span></div>
+    <div class="cvs-nav-links"><div class="cvs-nav-link active">Caregiving</div></div>
+    <div class="cvs-nav-right"><div class="cvs-nav-user"><div class="cvs-nav-avatar">EN</div><span>Hi, Emma</span></div></div>
+  </div>
+  <div class="page-wrap">
+    <div class="scenario-header" style="background:linear-gradient(135deg, #1A2845, #2D4A7A);">
+      <div class="scenario-tag">Scenario E · Lifecycle Event</div>
+      <div class="scenario-title">Minor Caregivee Turns 18</div>
+      <div class="scenario-desc">When a minor caregivee reaches age 18, the guardian-based minor relationship must be removed and replaced with an adult mutual-consent relationship. Both parties are notified.</div>
+      <div class="scenario-personas">
+        <div class="scenario-persona">👩 Vani Nagam — Parent/Caregiver</div>
+        <div class="scenario-persona">🎂 Emma Nagam — Turns 18 · Now an adult</div>
+        <div class="scenario-persona">⚡ System-triggered event</div>
+      </div>
+    </div>
+
+    <div class="alert alert-warning" style="margin-bottom:20px;">
+      <span class="alert-icon">⚠️</span>
+      <div><strong>System trigger:</strong> Emma Nagam turns 18 on June 14, 2033. The minor caregiving relationship will automatically expire and both parties will be notified 30 days in advance.</div>
+    </div>
+
+    <div class="journey-steps">
+      <div class="journey-step"><div class="journey-step-icon">📅</div><div class="journey-step-num">T-30 days</div><div class="journey-step-title">Advance Notice</div><div class="journey-step-desc">Health100 sends notifications to both Vani and Emma. Explains what will change and what action is needed.</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step"><div class="journey-step-icon">🔒</div><div class="journey-step-num">On 18th birthday</div><div class="journey-step-title">Minor Relationship Expires</div><div class="journey-step-desc">Guardian-based minor relationship automatically removed. All minor-specific permissions revoked. Access suspended pending new consent.</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step"><div class="journey-step-icon">📨</div><div class="journey-step-num">Step 3</div><div class="journey-step-title">Adult Consent Request</div><div class="journey-step-desc">Vani may request a new adult caregiving relationship. Emma receives the request and must actively consent as an adult.</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step"><div class="journey-step-icon">✋</div><div class="journey-step-num">Step 4</div><div class="journey-step-title">Emma Decides</div><div class="journey-step-desc">Emma — now an adult — chooses which services to share with Vani. She has full control. She may grant Pharmacy only, or all services.</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step" style="border-right:1px solid var(--border); border-radius:0 var(--radius-md) var(--radius-md) 0;"><div class="journey-step-icon">✅</div><div class="journey-step-num">Step 5</div><div class="journey-step-title">Adult Relationship</div><div class="journey-step-desc">New adult relationship established with Emma's consent. Permissions reflect her choices, not guardian defaults.</div></div>
+    </div>
+    <div class="scenario-outcome">
+      <span style="font-size:32px;">✅</span>
+      <div><div style="font-size:15px; font-weight:700; color:var(--teal); margin-bottom:4px;">Outcome</div><div style="font-size:13px; color:var(--text-mid); line-height:1.6;">Privacy transition handled automatically. The platform enforces that adults control their own data — no guardian can retain access without the adult's explicit re-consent. Both parties notified at every step.</div></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SCREEN 13 · Scenario F — External Provider
+══════════════════════════════════════════════ -->
+<div class="screen" id="s13">
+  <div class="cvs-nav">
+    <div class="cvs-logo"><span class="cvs-logo-heart">❤️</span><span class="cvs-logo-text">CVS</span><span class="cvs-logo-tagline">Health100™</span></div>
+    <div class="cvs-nav-links"><div class="cvs-nav-link active">Caregiving</div></div>
+    <div class="cvs-nav-right"><div class="cvs-nav-user"><div class="cvs-nav-avatar">VN</div><span>Hi, Vani</span></div></div>
+  </div>
+  <div class="page-wrap">
+    <div class="scenario-header" style="background:linear-gradient(135deg, #2D1A45, #5C3A8A);">
+      <div class="scenario-tag">Scenario F · Future State</div>
+      <div class="scenario-title">External Health Provider Integration</div>
+      <div class="scenario-desc">A future state where Health100 acts as the consent and caregiving hub for external health partners such as Kaiser Permanente, UnitedHealthcare, and other providers. Caregiving context is shared via API.</div>
+      <div class="scenario-personas">
+        <div class="scenario-persona">🏥 Kaiser Permanente — External partner</div>
+        <div class="scenario-persona">👩 Vani Nagam — H100 caregiver</div>
+        <div class="scenario-persona">🔮 Requires IL2 + partner consent</div>
+      </div>
+    </div>
+
+    <div class="alert alert-purple" style="margin-bottom:20px;">
+      <span class="alert-icon">🔮</span>
+      <div><strong>Future state:</strong> This scenario requires external partner API agreements and IL2-level trust. Not available in Phase 1. Health100 platform is being designed to support this architecture.</div>
+    </div>
+
+    <div class="journey-steps">
+      <div class="journey-step"><div class="journey-step-icon">🏥</div><div class="journey-step-num">Step 1</div><div class="journey-step-title">Partner Connection</div><div class="journey-step-desc">Kaiser connects to Health100 via caregiving API. H100 acts as authorization hub — Kaiser does not build its own caregiving system.</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step"><div class="journey-step-icon">🪪</div><div class="journey-step-num">Step 2</div><div class="journey-step-title">IL2 Verification</div><div class="journey-step-desc">Caregiver must reach IL2 trust level to authorize external provider access. Higher trust required for cross-org data sharing.</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step"><div class="journey-step-icon">📝</div><div class="journey-step-num">Step 3</div><div class="journey-step-title">Extended Consent</div><div class="journey-step-desc">User grants specific consent for Kaiser to receive caregiving context from H100. Consent is scoped to the partner and revocable.</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step"><div class="journey-step-icon">📡</div><div class="journey-step-num">Step 4</div><div class="journey-step-title">API Context Shared</div><div class="journey-step-desc">Health100 exposes caregiving relationships and permissions to Kaiser via API. Kaiser displays caregiver experience in its own app.</div></div>
+      <div class="journey-arrow">→</div>
+      <div class="journey-step" style="border-right:1px solid var(--border); border-radius:0 var(--radius-md) var(--radius-md) 0;"><div class="journey-step-icon">🌐</div><div class="journey-step-num">Step 5</div><div class="journey-step-title">Cross-Org Caregiving</div><div class="journey-step-desc">Caregiver can now act on behalf of caregivee at Kaiser without re-establishing the relationship. H100 is the single source of truth.</div></div>
+    </div>
+    <div class="scenario-outcome">
+      <span style="font-size:32px;">🔮</span>
+      <div><div style="font-size:15px; font-weight:700; color:var(--purple); margin-bottom:4px;">Future Outcome</div><div style="font-size:13px; color:var(--text-mid); line-height:1.6;">Health100 becomes the universal caregiving identity layer across the healthcare ecosystem. Partners integrate once to H100 and inherit caregiving context without building their own consent or relationship infrastructure.</div></div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+  function go(n) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('s' + n).classList.add('active');
+    const map = {1:0, 2:1, 3:2, 4:3, 5:4, 6:5, 7:6, 8:7, 9:8, 10:9, 11:10, 12:11, 13:12};
+    document.querySelectorAll('.proto-step').forEach((s, i) => {
+      s.classList.toggle('active', i === (map[n] !== undefined ? map[n] : n - 1));
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>
